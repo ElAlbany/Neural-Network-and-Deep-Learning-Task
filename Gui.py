@@ -197,6 +197,11 @@ class PenguinsGUI:
         self.bias_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(param_row2, text="Add Bias", variable=self.bias_var).grid(row=0, column=2, padx=(20, 0))
         
+        # Random state for reproducibility
+        ttk.Label(param_row2, text="Random State:").grid(row=0, column=3, sticky=tk.W, padx=(20, 5))
+        self.random_state_var = tk.IntVar(value=42)
+        ttk.Entry(param_row2, textvariable=self.random_state_var, width=10).grid(row=0, column=4)
+        
     def setup_control_section(self, parent):
         """Setup control buttons section"""
         control_frame = ttk.LabelFrame(parent, text="Model Controls", padding="10")
@@ -300,6 +305,7 @@ class PenguinsGUI:
                 self.log_result("Penguins dataset loaded successfully!")
                 self.log_result(f"Dataset shape: {self.data_processor.data.shape}")
                 self.log_result(f"Available classes: {', '.join(self.data_processor.classes)}")
+                self.log_result("NOTE: Features are now automatically scaled for better performance!")
             else:
                 messagebox.showerror("Error", "Failed to load dataset")
         except Exception as e:
@@ -335,7 +341,8 @@ class PenguinsGUI:
             # Prepare data
             self.X_train, self.X_test, self.y_train, self.y_test, filtered_data = self.data_processor.prepare_data(
                 self.feature1_var.get(), self.feature2_var.get(),
-                self.class1_var.get(), self.class2_var.get()
+                self.class1_var.get(), self.class2_var.get(),
+                random_state=self.random_state_var.get()
             )
             
             # Get parameters
@@ -370,19 +377,22 @@ class PenguinsGUI:
             self.log_result(f"{algorithm.upper()} TRAINING COMPLETED")
             self.log_result(f"{'='*60}")
             self.log_result(f"Features: {self.feature1_var.get()}, {self.feature2_var.get()}")
-            self.log_result(f"Classes: {self.class1_var.get()} (0) vs {self.class2_var.get()} (1)")
-            self.log_result(f"Training samples: {len(self.X_train)}")
-            self.log_result(f"Testing samples: {len(self.X_test)}")
+            self.log_result(f"Classes: {self.class1_var.get()} (-1) vs {self.class2_var.get()} (1)")
+            self.log_result(f"Training samples: {len(self.X_train)} (30 per class)")
+            self.log_result(f"Testing samples: {len(self.X_test)} (20 per class)")
             self.log_result(f"Learning rate: {learning_rate}")
             self.log_result(f"Epochs: {epochs}")
             self.log_result(f"Bias: {'Yes' if add_bias else 'No'}")
+            self.log_result(f"Random State: {self.random_state_var.get()}")
             
             if algorithm == "perceptron":
                 self.log_result(f"Final training errors: {self.current_model.errors[-1]}")
                 self.log_result(f"Total epochs used: {len(self.current_model.errors)}")
+                self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
             else:
                 self.log_result(f"Final MSE: {self.current_model.mse_history[-1]:.6f}")
                 self.log_result(f"Total epochs used: {len(self.current_model.mse_history)}")
+                self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
             
         except Exception as e:
             messagebox.showerror("Training Error", f"Failed to train model: {str(e)}")
@@ -420,6 +430,17 @@ class PenguinsGUI:
             self.log_result(f"Precision: {precision:.4f}")
             self.log_result(f"Recall:    {recall:.4f}")
             self.log_result(f"F1-Score:  {f1:.4f}")
+            
+            # Analyze performance
+            if accuracy == 1.0:
+                self.log_result("\n⚠️  PERFECT ACCURACY - This might indicate:")
+                self.log_result("   - Good feature separation")
+                self.log_result("   - Overfitting (check with different random states)")
+            elif accuracy <= 0.5:
+                self.log_result("\n⚠️  LOW ACCURACY - This might indicate:")
+                self.log_result("   - Poor feature separation")
+                self.log_result("   - Non-linearly separable classes")
+                self.log_result("   - Try different features or algorithm")
             
         except Exception as e:
             messagebox.showerror("Testing Error", f"Failed to test model: {str(e)}")
@@ -497,7 +518,7 @@ class PenguinsGUI:
         feature1_frame = ttk.Frame(input_frame)
         feature1_frame.pack(fill=tk.X, pady=5)
         ttk.Label(feature1_frame, text=f"{self.current_features[0]}:").pack(side=tk.LEFT)
-        feature1_var = tk.DoubleVar()
+        feature1_var = tk.DoubleVar(value=40.0)  # Default reasonable value
         feature1_entry = ttk.Entry(feature1_frame, textvariable=feature1_var)
         feature1_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
         
@@ -505,7 +526,7 @@ class PenguinsGUI:
         feature2_frame = ttk.Frame(input_frame)
         feature2_frame.pack(fill=tk.X, pady=5)
         ttk.Label(feature2_frame, text=f"{self.current_features[1]}:").pack(side=tk.LEFT)
-        feature2_var = tk.DoubleVar()
+        feature2_var = tk.DoubleVar(value=18.0)  # Default reasonable value
         feature2_entry = ttk.Entry(feature2_frame, textvariable=feature2_var)
         feature2_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
         
@@ -531,8 +552,11 @@ class PenguinsGUI:
         
         def predict():
             try:
+                # Create sample and scale it
                 sample = np.array([[feature1_var.get(), feature2_var.get()]])
-                prediction = self.current_model.predict(sample)[0]
+                scaled_sample = self.data_processor.scale_single_sample(sample)
+                
+                prediction = self.current_model.predict(scaled_sample.reshape(1, -1))[0]
                 
                 predicted_class = self.current_classes[1] if prediction == 1 else self.current_classes[0]
                 true_class = true_class_var.get()
@@ -583,8 +607,8 @@ class PenguinsGUI:
                 messagebox.showerror("Error", f"Prediction failed: {str(e)}")
         
         def clear_inputs():
-            feature1_var.set(0)
-            feature2_var.set(0)
+            feature1_var.set(40.0)
+            feature2_var.set(18.0)
             true_class_var.set("Unknown")
             result_text.configure(state=tk.NORMAL)
             result_text.delete(1.0, tk.END)
