@@ -12,13 +12,9 @@ class DataProcessor:
         
     def load_data(self, file_path):
         """Load and preprocess the penguins dataset"""
-        try:
-            self.data = pd.read_csv(file_path)
-            self._preprocess_data()
-            return True
-        except Exception as e:
-            print(f"Error loading data: {e}")
-            return False
+        self.data = pd.read_csv(file_path)
+        self._preprocess_data()
+        return True
     
     def _preprocess_data(self):
         """Preprocess the data: handle missing values and encode categorical variables"""
@@ -33,24 +29,7 @@ class DataProcessor:
         species_mapping = {species: idx for idx, species in enumerate(self.classes)}
         self.data['Species'] = self.data['Species'].map(species_mapping)
     
-    def get_feature_combinations(self):
-        """Get all possible feature combinations"""
-        numeric_features = ['CulmenLength', 'CulmenDepth', 'FlipperLength', 'OriginLocation', 'BodyMass']
-        combinations = []
-        for i in range(len(numeric_features)):
-            for j in range(i + 1, len(numeric_features)):
-                combinations.append((numeric_features[i], numeric_features[j]))
-        return combinations
-    
-    def get_class_combinations(self):
-        """Get all possible class combinations"""
-        combinations = []
-        for i in range(len(self.classes)):
-            for j in range(i + 1, len(self.classes)):
-                combinations.append((self.classes[i], self.classes[j]))
-        return combinations
-    
-    def prepare_data(self, feature1, feature2, class1, class2, test_size=0.4, random_state=None):
+    def prepare_data(self, feature1, feature2, class1, class2, random_state=None):
         """Prepare training and testing data for the selected features and classes"""
         # Filter data for selected classes
         class1_idx = self.classes.index(class1)
@@ -97,7 +76,3 @@ class DataProcessor:
         X_test_scaled = self.scaler.transform(X_test)
         
         return X_train_scaled, X_test_scaled, y_train, y_test, filtered_data
-    
-    def scale_single_sample(self, sample):
-        """Scale a single sample for prediction"""
-        return self.scaler.transform(sample.reshape(1, -1))[0]

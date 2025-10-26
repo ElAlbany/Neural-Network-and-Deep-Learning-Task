@@ -57,21 +57,22 @@ class Perceptron:
                     break
             else:
                 self.converged = False
-        
-        # If not converged, use the best weights (minimum errors)
-        if not self.converged and len(self.errors) > 0:
-            best_epoch = np.argmin(self.errors)
-            # We'd need to store weights history for this, but for simplicity we'll proceed
     
     def get_decision_boundary(self, X):
-        """Get decision boundary coordinates for plotting"""
-        if self.add_bias and self.weights is not None and len(self.weights) == 3:
-            w0, w1, w2 = self.weights
-            if abs(w2) > 1e-10:  # Avoid division by zero with tolerance
-                x1_min, x1_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
-                x2_values = (-w0 - w1 * np.array([x1_min, x1_max])) / w2
-                return [x1_min, x1_max], x2_values
-        return None, None
+        """Get decision boundary coordinates for plotting (works with or without bias)."""
+        weights = self.weights
+        x1_min, x1_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+
+        if len(weights) == 3 and self.add_bias:
+            w0, w1, w2 = weights
+            x2_values = (-w0 - w1 * np.array([x1_min, x1_max])) / w2
+
+        elif len(weights) == 2 and not self.add_bias:
+            w1, w2 = weights
+            x2_values = -(w1 / w2) * np.array([x1_min, x1_max])
+
+        return [x1_min, x1_max], x2_values
+
 
 class Adaline:
     def __init__(self, learning_rate=0.01, n_iterations=1000, mse_threshold=0.001, add_bias=True):
@@ -102,51 +103,43 @@ class Adaline:
         return np.where(activation >= 0, 1, -1)  # Return -1/1
     
     def fit(self, X, y):
-        """Train the Adaline using proper gradient descent with momentum"""
+        """Train the Adaline using standard gradient descent (no momentum)."""
         if self.add_bias:
             X = self.add_bias_term(X)
-        
+
         n_samples, n_features = X.shape
         self.initialize_weights(n_features - 1 if self.add_bias else n_features)
-        
-        # Add momentum for better convergence
-        previous_weight_update = np.zeros_like(self.weights)
-        momentum = 0.9
-        
+
         for iteration in range(self.n_iterations):
-            # Calculate net input and errors
             net_input = np.dot(X, self.weights)
             errors = y - net_input
-            
-            # Calculate gradient (negative gradient for minimization)
             gradient = -2 * X.T.dot(errors) / n_samples
-            
-            # Update weights with momentum
-            weight_update = self.learning_rate * gradient + momentum * previous_weight_update
-            self.weights -= weight_update
-            previous_weight_update = weight_update
-            
-            # Calculate MSE
+            self.weights -= self.learning_rate * gradient
             mse = np.mean(errors ** 2)
             self.mse_history.append(mse)
-            
-            # Check convergence
+
             if mse <= self.mse_threshold:
                 self.converged = True
                 break
             elif iteration > 10 and abs(self.mse_history[-1] - self.mse_history[-2]) < 1e-8:
                 self.converged = True
                 break
+
     
     def get_decision_boundary(self, X):
-        """Get decision boundary coordinates for plotting"""
-        if self.add_bias and self.weights is not None and len(self.weights) == 3:
-            w0, w1, w2 = self.weights
-            if abs(w2) > 1e-10:  # Avoid division by zero with tolerance
-                x1_min, x1_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
-                x2_values = (-w0 - w1 * np.array([x1_min, x1_max])) / w2
-                return [x1_min, x1_max], x2_values
-        return None, None
+        """Get decision boundary coordinates for plotting (works with or without bias)."""
+        weights = self.weights
+        x1_min, x1_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+
+        if len(weights) == 3 and self.add_bias:
+            w0, w1, w2 = weights
+            x2_values = (-w0 - w1 * np.array([x1_min, x1_max])) / w2
+
+        elif len(weights) == 2 and not self.add_bias:
+            w1, w2 = weights
+            x2_values = -(w1 / w2) * np.array([x1_min, x1_max])
+
+        return [x1_min, x1_max], x2_values
 
 class NeuralNetworkManager:
     def __init__(self):
@@ -186,11 +179,10 @@ class NeuralNetworkManager:
                    color='blue', marker='s', label=f'{class_names[1]}', alpha=0.7, s=60)
         
         # Plot decision boundary
-        if model.add_bias:
-            x_boundary, y_boundary = model.get_decision_boundary(X)
-            if x_boundary is not None and y_boundary is not None:
-                ax1.plot(x_boundary, y_boundary, color='green', linewidth=3, 
-                        label='Decision Boundary', linestyle='--')
+        x_boundary, y_boundary = model.get_decision_boundary(X)
+        if x_boundary is not None and y_boundary is not None:
+            ax1.plot(x_boundary, y_boundary, color='green', linewidth=3, 
+                    label='Decision Boundary', linestyle='--')
         
         ax1.set_xlabel(feature_names[0])
         ax1.set_ylabel(feature_names[1])

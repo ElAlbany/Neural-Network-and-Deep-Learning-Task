@@ -293,24 +293,7 @@ class PenguinsGUI:
     def _on_plot_configure(self, event):
         """Update scroll region when plot container is configured"""
         self.viz_canvas.configure(scrollregion=self.viz_canvas.bbox("all"))
-        
-    def load_dataset(self):
-        """Load the penguins dataset"""
-        try:
-            # For now, we'll use the provided CSV file
-            success = self.data_processor.load_data("penguins.csv")
-            if success:
-                self.data_status.config(text="Data loaded successfully", foreground="green")
-                self.update_selection_combos()
-                self.log_result("Penguins dataset loaded successfully!")
-                self.log_result(f"Dataset shape: {self.data_processor.data.shape}")
-                self.log_result(f"Available classes: {', '.join(self.data_processor.classes)}")
-                self.log_result("NOTE: Features are now automatically scaled for better performance!")
-            else:
-                messagebox.showerror("Error", "Failed to load dataset")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load dataset: {str(e)}")
-    
+
     def update_selection_combos(self):
         """Update combo boxes with available features and classes"""
         # Update feature combinations
@@ -332,70 +315,63 @@ class PenguinsGUI:
             self.class2_var.set(classes[1])
     
     def train_model(self):
-        """Train the selected neural network model"""
-        try:
-            # Validate inputs
-            if not self.validate_inputs():
-                return
-            
-            # Prepare data
-            self.X_train, self.X_test, self.y_train, self.y_test, filtered_data = self.data_processor.prepare_data(
-                self.feature1_var.get(), self.feature2_var.get(),
-                self.class1_var.get(), self.class2_var.get(),
-                random_state=self.random_state_var.get()
+        """Train the selected neural network model"""            
+        # Prepare data
+        self.X_train, self.X_test, self.y_train, self.y_test, filtered_data = self.data_processor.prepare_data(
+            self.feature1_var.get(), self.feature2_var.get(),
+            self.class1_var.get(), self.class2_var.get(),
+            random_state=self.random_state_var.get()
+        )
+        
+        # Get parameters
+        learning_rate = self.learning_rate_var.get()
+        epochs = self.epochs_var.get()
+        add_bias = self.bias_var.get()
+        
+        algorithm = self.algorithm_var.get()
+        
+        if algorithm == "perceptron":
+            self.current_model = Perceptron(
+                learning_rate=learning_rate,
+                n_iterations=epochs,
+                add_bias=add_bias
             )
-            
-            # Get parameters
-            learning_rate = self.learning_rate_var.get()
-            epochs = self.epochs_var.get()
-            add_bias = self.bias_var.get()
-            
-            algorithm = self.algorithm_var.get()
-            
-            if algorithm == "perceptron":
-                self.current_model = Perceptron(
-                    learning_rate=learning_rate,
-                    n_iterations=epochs,
-                    add_bias=add_bias
-                )
-            else:  # adaline
-                mse_threshold = self.mse_threshold_var.get()
-                self.current_model = Adaline(
-                    learning_rate=learning_rate,
-                    n_iterations=epochs,
-                    mse_threshold=mse_threshold,
-                    add_bias=add_bias
-                )
-            
-            # Train model
-            self.current_model.fit(self.X_train, self.y_train)
-            
-            self.current_features = (self.feature1_var.get(), self.feature2_var.get())
-            self.current_classes = (self.class1_var.get(), self.class2_var.get())
-            
-            self.log_result(f"\n{'='*60}")
-            self.log_result(f"{algorithm.upper()} TRAINING COMPLETED")
-            self.log_result(f"{'='*60}")
-            self.log_result(f"Features: {self.feature1_var.get()}, {self.feature2_var.get()}")
-            self.log_result(f"Classes: {self.class1_var.get()} (-1) vs {self.class2_var.get()} (1)")
-            self.log_result(f"Training samples: {len(self.X_train)} (30 per class)")
-            self.log_result(f"Testing samples: {len(self.X_test)} (20 per class)")
-            self.log_result(f"Learning rate: {learning_rate}")
-            self.log_result(f"Epochs: {epochs}")
-            self.log_result(f"Bias: {'Yes' if add_bias else 'No'}")
-            self.log_result(f"Random State: {self.random_state_var.get()}")
-            
-            if algorithm == "perceptron":
-                self.log_result(f"Final training errors: {self.current_model.errors[-1]}")
-                self.log_result(f"Total epochs used: {len(self.current_model.errors)}")
-                self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
-            else:
-                self.log_result(f"Final MSE: {self.current_model.mse_history[-1]:.6f}")
-                self.log_result(f"Total epochs used: {len(self.current_model.mse_history)}")
-                self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
-            
-        except Exception as e:
-            messagebox.showerror("Training Error", f"Failed to train model: {str(e)}")
+        else:  # adaline
+            mse_threshold = self.mse_threshold_var.get()
+            self.current_model = Adaline(
+                learning_rate=learning_rate,
+                n_iterations=epochs,
+                mse_threshold=mse_threshold,
+                add_bias=add_bias
+            )
+        
+        # Train model
+        self.current_model.fit(self.X_train, self.y_train)
+        
+        self.current_features = (self.feature1_var.get(), self.feature2_var.get())
+        self.current_classes = (self.class1_var.get(), self.class2_var.get())
+        
+        self.log_result(f"\n{'='*60}")
+        self.log_result(f"{algorithm.upper()} TRAINING COMPLETED")
+        self.log_result(f"{'='*60}")
+        self.log_result(f"Features: {self.feature1_var.get()}, {self.feature2_var.get()}")
+        self.log_result(f"Classes: {self.class1_var.get()} (-1) vs {self.class2_var.get()} (1)")
+        self.log_result(f"Training samples: {len(self.X_train)} (30 per class)")
+        self.log_result(f"Testing samples: {len(self.X_test)} (20 per class)")
+        self.log_result(f"Learning rate: {learning_rate}")
+        self.log_result(f"Epochs: {epochs}")
+        self.log_result(f"Bias: {'Yes' if add_bias else 'No'}")
+        self.log_result(f"Random State: {self.random_state_var.get()}")
+        
+        if algorithm == "perceptron":
+            self.log_result(f"Final training errors: {self.current_model.errors[-1]}")
+            self.log_result(f"Total epochs used: {len(self.current_model.errors)}")
+            self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
+        else:
+            self.log_result(f"Final MSE: {self.current_model.mse_history[-1]:.6f}")
+            self.log_result(f"Total epochs used: {len(self.current_model.mse_history)}")
+            self.log_result(f"Converged: {'Yes' if self.current_model.converged else 'No'}")
+
     
     def test_model(self):
         """Test the trained model"""
@@ -430,17 +406,6 @@ class PenguinsGUI:
             self.log_result(f"Precision: {precision:.4f}")
             self.log_result(f"Recall:    {recall:.4f}")
             self.log_result(f"F1-Score:  {f1:.4f}")
-            
-            # Analyze performance
-            if accuracy == 1.0:
-                self.log_result("\n⚠️  PERFECT ACCURACY - This might indicate:")
-                self.log_result("   - Good feature separation")
-                self.log_result("   - Overfitting (check with different random states)")
-            elif accuracy <= 0.5:
-                self.log_result("\n⚠️  LOW ACCURACY - This might indicate:")
-                self.log_result("   - Poor feature separation")
-                self.log_result("   - Non-linearly separable classes")
-                self.log_result("   - Try different features or algorithm")
             
         except Exception as e:
             messagebox.showerror("Testing Error", f"Failed to test model: {str(e)}")
@@ -554,9 +519,8 @@ class PenguinsGUI:
             try:
                 # Create sample and scale it
                 sample = np.array([[feature1_var.get(), feature2_var.get()]])
-                scaled_sample = self.data_processor.scale_single_sample(sample)
                 
-                prediction = self.current_model.predict(scaled_sample.reshape(1, -1))[0]
+                prediction = self.current_model.predict(sample.reshape(1, -1))[0]
                 
                 predicted_class = self.current_classes[1] if prediction == 1 else self.current_classes[0]
                 true_class = true_class_var.get()
@@ -693,3 +657,18 @@ class PenguinsGUI:
         """Add message to results text widget"""
         self.results_text.insert(tk.END, message + "\n")
         self.results_text.see(tk.END)
+
+
+    def load_dataset(self):
+        """Load the penguins dataset"""
+        # For now, we'll use the provided CSV file
+        success = self.data_processor.load_data("penguins.csv")
+        if success:
+            self.data_status.config(text="Data loaded successfully", foreground="green")
+            self.update_selection_combos()
+            self.log_result("Penguins dataset loaded successfully!")
+            self.log_result(f"Dataset shape: {self.data_processor.data.shape}")
+            self.log_result(f"Available classes: {', '.join(self.data_processor.classes)}")
+            self.log_result("NOTE: Features are now automatically scaled for better performance!")
+        else:
+            messagebox.showerror("Error", "Failed to load dataset")
