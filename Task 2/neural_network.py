@@ -38,24 +38,24 @@ class BackpropagationNN:
         elif self.activation_function == "tanh":
             return np.tanh(x)
 
-    def _activate_derivative(self, activated_x):
+    def _activate_derivative(self, k):
         if self.activation_function == "sigmoid":
-            return activated_x * (1 - activated_x)
+            return k * (1 - k)
         elif self.activation_function == "tanh":
-            return 1 - activated_x**2
+            return (1 - k) * (1 + k)
 
     def forward(self, x):
-        activations = [x]
+        f = [x]
         inputs = x
         for w in self.weights:
             if self.bias:
                 inputs = np.append(inputs, 1)
             z = np.dot(w, inputs)
             a = self._activate(z)
-            activations.append(a)
+            f.append(a)
             inputs = a
-        self.f = activations
-        return activations[-1]
+        self.f = f
+        return f[-1]
 
     def backward(self, y_true):
         deltas = []
