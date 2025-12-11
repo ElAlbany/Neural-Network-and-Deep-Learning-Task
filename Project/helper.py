@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import nlpaug.augmenter.word as naw
 from transformers import MarianMTModel, MarianTokenizer
 
@@ -507,3 +508,148 @@ class MultiHeadAttentionPooling(nn.Module):
         pooled = self.out_proj(context).squeeze(1)
         
         return pooled
+
+
+# ============================================================================
+# Small-data utilities (vocabulary + preprocessing)
+# ============================================================================
+
+def create_optimal_vocabulary(texts: Iterable[str], target_size: int = 8000) -> dict:
+    """
+    Build a small-data-friendly vocabulary combining frequent words and subword n-grams.
+    Returns a mapping token -> id.
+    """
+    from collections import Counter
+
+    word_counts = Counter()
+    char_counts = Counter()
+
+    for text in texts:
+        text = str(text).lower()
+        words = re.findall(r"\b\w[\w'\-]+\b", text)
+        word_counts.update(words)
+        for word in words:
+            for i in range(len(word) - 2):
+                char_counts[word[i : i + 3]] += 1
+
+    vocab: List[str] = []
+    # Top frequent words
+    vocab.extend([w for w, _ in word_counts.most_common(6000)])
+
+    # Mid-frequency informative words (<10% docs) using a simple doc freq heuristic
+    total_docs = len(texts)
+    for word, count in word_counts.items():
+        if 5 <= count <= 20:
+            doc_freq = sum(1 for t in texts if word in str(t))
+            if doc_freq <= total_docs * 0.1:
+                vocab.append(word)
+
+    # Common character 3-grams as subwords
+    vocab.extend([f"##{chars}##" for chars, _ in char_counts.most_common(1000)])
+
+    # Limit and add specials
+    vocab = list(dict.fromkeys(vocab))  # preserve order, dedupe
+    vocab = vocab[: target_size - 3]
+    vocab = ['<PAD>', '<UNK>', '<NUM>'] + vocab
+    return {tok: idx for idx, tok in enumerate(vocab)}
+
+
+def preprocess_text_for_small_data(text: str, vocab: dict, max_len: int = 150) -> List[int]:
+    """
+    Conservative preprocessing + token-to-id with subword fallback and dynamic padding/truncation.
+    """
+    text = str(text).lower()
+    text = re.sub(r"\d+", " <NUM> ", text)
+    text = re.sub(r"([!?.]){2,}", r"\1", text)
+    text = re.sub(r"([!?.])", r" \1 ", text)
+
+    tokens: List[str] = []
+    for part in text.split():
+        if part in ['.', '!', '?', ',', ';', ':']:
+            tokens.append(part)
+        else:
+            tokens.extend(re.findall(r"\b\w[\w'\-]+\b", part))
+
+    encoded: List[int] = []
+    for tok in tokens:
+        if tok in vocab:
+            encoded.append(vocab[tok])
+        else:
+            found = False
+            for i in range(3, len(tok)):
+                sub = f"##{tok[i-3:i]}##"
+                if sub in vocab:
+                    encoded.append(vocab[sub])
+                    found = True
+                    break
+            if not found:
+                encoded.append(vocab['<UNK>'])
+
+    if len(encoded) > max_len:
+        keep_start = encoded[: max_len // 2]
+        keep_end = encoded[-(max_len // 2) :]
+        encoded = keep_start + keep_end
+    else:
+        encoded = encoded + [vocab['<PAD>']] * (max_len - len(encoded))
+
+    return encoded[:max_len]
+
+
+# ============================================================================
+# TextCNN with GLU for small datasets
+# ============================================================================
+
+class TextCNNGLU(nn.Module):
+    """
+    CNN with Gated Linear Units and attention pooling.
+    Works well on smaller datasets.
+    """
+
+    def __init__(self, vocab_size: int, embed_dim: int = 128, num_classes: int = 5):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.embed_dropout = nn.Dropout(0.5)
+
+        self.conv3 = nn.Conv1d(embed_dim, 64, kernel_size=3, padding=1)
+        self.conv5 = nn.Conv1d(embed_dim, 64, kernel_size=5, padding=2)
+        self.conv7 = nn.Conv1d(embed_dim, 64, kernel_size=7, padding=3)
+
+        self.glu = nn.GLU(dim=1)
+
+        self.attention = nn.Sequential(
+            nn.Linear(96, 64),
+            nn.Tanh(),
+            nn.Linear(64, 1, bias=False),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(96, 48),
+            nn.LayerNorm(48),
+            nn.GELU(),
+            nn.Dropout(0.6),
+            nn.Linear(48, num_classes),
+        )
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        nn.init.xavier_uniform_(self.embedding.weight)
+        nn.init.kaiming_normal_(self.conv3.weight, mode='fan_out', nonlinearity='linear')
+        nn.init.kaiming_normal_(self.conv5.weight, mode='fan_out', nonlinearity='linear')
+        nn.init.kaiming_normal_(self.conv7.weight, mode='fan_out', nonlinearity='linear')
+
+    def forward(self, x):
+        x = self.embedding(x)  # (batch, seq_len, embed_dim)
+        x = self.embed_dropout(x)
+        x = x.transpose(1, 2)  # (batch, embed_dim, seq_len)
+
+        c3 = self.glu(self.conv3(x))
+        c5 = self.glu(self.conv5(x))
+        c7 = self.glu(self.conv7(x))
+
+        combined = torch.cat([c3, c5, c7], dim=1).transpose(1, 2)  # (batch, seq_len, 96)
+        attn_weights = F.softmax(self.attention(combined), dim=1)  # (batch, seq_len, 1)
+        weighted = torch.sum(attn_weights * combined, dim=1)  # (batch, 96)
+
+        logits = self.classifier(weighted)
+        return logits, attn_weights
