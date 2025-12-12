@@ -1,0 +1,4 @@
+1) LR=0.0001, Drop=0.5, Val_Acc=0.6807, Val_Loss=0.8446 TestACC = 66.88%
+2) LR=0.0005, Drop=0.2, Val_Acc=0.6807, Val_Loss=0.8887 TestACC = 66.35%
+3) LR=0.0001, Drop=0.6, Val_Acc=0.6807, Val_Loss=0.8524 TestACC = 66.11%
+
