@@ -1,0 +1,39 @@
+Config 1: LR=0.0001, Drop=0.2, Val_Acc=0.6817, Val_Loss=0.8609
+Config 2: LR=0.0001, Drop=0.3, Val_Acc=0.6878, Val_Loss=0.8604
+Config 3: LR=0.0001, Drop=0.4, Val_Acc=0.6755, Val_Loss=0.8409
+Config 4: LR=0.0001, Drop=0.5, Val_Acc=0.6878, Val_Loss=0.8410
+Config 5: LR=0.0001, Drop=0.6, Val_Acc=0.6919, Val_Loss=0.8393
+Config 6: LR=0.0001, Drop=0.7, Val_Acc=0.6643, Val_Loss=0.9051
+Config 7: LR=0.0005, Drop=0.2, Val_Acc=0.6940, Val_Loss=0.8276
+Config 8: LR=0.0005, Drop=0.3, Val_Acc=0.6714, Val_Loss=0.8610
+Config 9: LR=0.0005, Drop=0.4, Val_Acc=0.6899, Val_Loss=0.8357
+Config 10: LR=0.0005, Drop=0.5, Val_Acc=0.6571, Val_Loss=0.8789
+Config 11: LR=0.0005, Drop=0.6, Val_Acc=0.6633, Val_Loss=0.8614
+Config 12: LR=0.0005, Drop=0.7, Val_Acc=0.6254, Val_Loss=0.9718
+Config 13: LR=0.0010, Drop=0.2, Val_Acc=0.6807, Val_Loss=0.9085
+Config 14: LR=0.0010, Drop=0.3, Val_Acc=0.6336, Val_Loss=0.9320
+Config 15: LR=0.0010, Drop=0.4, Val_Acc=0.6530, Val_Loss=0.9123
+Config 16: LR=0.0010, Drop=0.5, Val_Acc=0.6673, Val_Loss=0.8971
+Config 17: LR=0.0010, Drop=0.6, Val_Acc=0.6325, Val_Loss=0.9463
+Config 18: LR=0.0010, Drop=0.7, Val_Acc=0.6254, Val_Loss=0.9322
+Config 19: LR=0.0050, Drop=0.2, Val_Acc=0.5619, Val_Loss=1.1033
+Config 20: LR=0.0050, Drop=0.3, Val_Acc=0.5486, Val_Loss=1.1080
+Config 21: LR=0.0050, Drop=0.4, Val_Acc=0.4575, Val_Loss=1.2685
+Config 22: LR=0.0050, Drop=0.5, Val_Acc=0.4493, Val_Loss=1.2655
+Config 23: LR=0.0050, Drop=0.6, Val_Acc=0.4186, Val_Loss=1.3413
+Config 24: LR=0.0050, Drop=0.7, Val_Acc=0.4074, Val_Loss=1.3976
+Config 25: LR=0.0000, Drop=0.2, Val_Acc=0.6285, Val_Loss=1.0072
+Config 26: LR=0.0000, Drop=0.3, Val_Acc=0.5926, Val_Loss=1.0463
+Config 27: LR=0.0000, Drop=0.4, Val_Acc=0.6244, Val_Loss=1.0200
+Config 28: LR=0.0000, Drop=0.5, Val_Acc=0.6049, Val_Loss=1.0358
+Config 29: LR=0.0000, Drop=0.6, Val_Acc=0.5814, Val_Loss=1.0775
+Config 30: LR=0.0000, Drop=0.7, Val_Acc=0.5875, Val_Loss=1.0994
+
+============================================================
+BEST CONFIGURATION:
+Learning Rate: 0.0005
+Dropout Rate: 0.2
+Best Validation Accuracy: 0.6940
+============================================================
+
+Best model is ready for use!
