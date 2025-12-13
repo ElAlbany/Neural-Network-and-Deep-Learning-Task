@@ -79,16 +79,7 @@ def augment_with_bert_insert(
     action: str = "insert",
     **kwargs,
 ) -> List[str]:
-    """
-    Apply BERT-based contextual augmentation (insert/replace).
 
-    Args:
-        texts: Iterable of input strings.
-        model_path: Hugging Face model name or path.
-        n: Number of augmented samples per input.
-        aug_p: Proportion of tokens to augment.
-        action: "insert" or "substitute".
-    """
     aug = naw.ContextualWordEmbsAug(
         model_path=model_path,
         action=action,
@@ -115,19 +106,7 @@ def augment_classes(
     target_count: Optional[int] = None,
     random_state: Optional[int] = None,
 ) -> pd.DataFrame:
-    """
-    Augment specific target classes until they reach target_count (defaults to max class size).
 
-    Args:
-        df: Input DataFrame.
-        text_col: Column containing text to augment.
-        target_col: Target label column.
-        classes: Iterable of class names to upsample.
-        augment_fn: Function that takes List[str] and returns List[str] augmented texts.
-        n_per_sample: Number of augmented variants generated per picked sample.
-        target_count: Desired count per class; if None uses current max class size.
-        random_state: Optional seed for reproducibility.
-    """
     rng = np.random.default_rng(random_state)
     outputs = [df]
 
@@ -159,31 +138,12 @@ def augment_classes(
 
 
 class CustomTokenizer:
-    """
-    Custom tokenizer supporting BPE, SentencePiece, and WordPiece methods.
-    Can train on your corpus and encode batches of texts.
-    """
     def __init__(self, vocab_size=8000, method='bpe'):
-        """
-        Args:
-            vocab_size: Size of vocabulary to train
-            method: 'bpe', 'sentencepiece', or 'wordpiece'
-        """
         self.vocab_size = vocab_size
         self.method = method
         self.tokenizer = None
         
     def train_from_texts(self, texts, output_dir='./tokenizers'):
-        """
-        Train tokenizer on your corpus.
-        
-        Args:
-            texts: List of text strings to train on
-            output_dir: Directory to save tokenizer files
-            
-        Returns:
-            The trained tokenizer object
-        """
         os.makedirs(output_dir, exist_ok=True)
         
         # Save texts to file
